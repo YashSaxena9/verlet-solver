@@ -13,7 +13,7 @@ namespace Constants {
     constexpr float SPAWN_PROBABLITY = 0.4f;
     constexpr int SPAWN_LIMIT = 2000;
 
-    constexpr Vector2 GRAVITY = Vector2 { 0.0f, 9.81f};
+    constexpr Vector2 GRAVITY = Vector2 { 0.0f, 9.81f };
     constexpr Vector2 WIND_FORCE = Vector2 { 0.0f, 0.0f };
 
     constexpr int PARTICLE_RADIUS = 5.0;

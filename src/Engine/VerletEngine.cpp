@@ -4,17 +4,25 @@
 void VerletEngine::EnsureCapacity(size_t additionalCount) {
     size_t requiredSize = m_particles.size() + additionalCount;
     if (requiredSize > m_particles.capacity()) {
-        size_t newCapacity = std::max(requiredSize + 1, m_particles.capacity() * 3 / 2);
+        size_t newCapacity = std::max(
+            requiredSize + 1,
+            m_particles.capacity() * 3 / 2
+        );
         m_particles.reserve(newCapacity);
     }
 }
 
 void VerletEngine::AddParticle(const Vector2& position, float radius, Color color) {
-    m_particles.emplace_back(position, radius, color);
+    addParticle(position, radius, color, false);
 }
 
 void VerletEngine::AddFixedParticle(const Vector2& position, float radius, Color color) {
-    m_particles.emplace_back(position, radius, color, true);
+    addParticle(position, radius, color, true);
+}
+
+void VerletEngine::addParticle(const Vector2& position, float radius, Color color, bool isFixed) {
+    m_particles.emplace_back(position, radius, color, isFixed);
+    maxParticleRadius = std::max(maxParticleRadius, radius);
 }
 
 size_t VerletEngine::ParticlesCount() const {
@@ -33,10 +41,10 @@ void VerletEngine::ApplyGravity(const Vector2& gravity) {
     }
 }
 
-void VerletEngine::ApplyConstraints(int screenWidth, int screenHeight) {
+void VerletEngine::ApplyConstraints(uint32_t screenWidth, uint32_t screenHeight) {
     for (auto& particle : m_particles) {
         Vector2 position = particle.GetPosition();
-        const float radius = particle.GetRadius();
+        float radius = particle.GetRadius();
         /// as an optimisation we can use bitwise operators
         /// but I am lazy, and its will be less readable
         bool changedX = false, changedY = false;
@@ -89,6 +97,6 @@ void VerletEngine::ResolveCollisions() {
 
 void VerletEngine::Draw(const Texture2D* particleTexture) const {
     for (const auto& particle : m_particles) {
-        particle.Draw(particleTexture);
+        particle.Draw();
     }
 }
