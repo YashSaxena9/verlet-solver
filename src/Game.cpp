@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <random>
 #include "Game.hpp"
+#include "utils/FeatureFlags.hpp"
 
 Game::Game(uint32_t screenWidth, uint32_t screenHeight, uint32_t frameRate)
     : m_screenWidth(screenWidth)
@@ -115,10 +116,16 @@ void Game::ProcessInput() {
 
 void Game::Update() {
     float dt = GetFrameTime();
-    m_engine.ApplyGravity(Constants::GRAVITY);
-    m_engine.Update(dt);
-    m_engine.ApplyConstraints(m_screenWidth, m_screenHeight);
-    m_engine.ResolveCollisions();
+    float stepDt = dt / updateSubsteps;
+    bool gravityEnabled = FeatureFlags::Instance().IsEnabled(Feature::Gravity);
+    for (int i = 0; i < updateSubsteps; i++) {
+        if (gravityEnabled) {
+            m_engine.ApplyGravity(Constants::GRAVITY);
+        }
+        m_engine.Update(stepDt);
+        m_engine.ApplyConstraints(m_screenWidth, m_screenHeight);
+        m_engine.ResolveCollisions();
+    }
 }
 
 void Game::Render() {

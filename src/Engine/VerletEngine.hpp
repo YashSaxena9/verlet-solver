@@ -14,9 +14,15 @@ public:
     void ApplyGravity(const Vector2& gravity);
     void Draw(const Texture2D* particleTexture) const;
     void ResolveCollisions();
+
+    inline float GetMaxParticleRadiusInSystem() {
+        return maxParticleRadius;
+    }
 private:
     float maxParticleRadius = 0;
     std::vector<Particle> m_particles;
 
     void addParticle(const Vector2& position, float radius, Color color, bool isFixed);
+    void resolveCollisionsWithSpatialHashing();
+    void resolveCollisionsWithNxNComparisons();
 };

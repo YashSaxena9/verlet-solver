@@ -4,6 +4,10 @@
 
 class Particle {
 public:
+    // a small epsilon value to account for floating-point imprecision.
+    static constexpr float eps = 0.0001f;
+    static constexpr float dampening = 0.98f;
+
     Particle(const Vector2& pos, float radius, const Color color = WHITE, bool isFixed = false);
     Particle(Particle&& particle) noexcept;
 
@@ -68,8 +72,4 @@ private:
     float m_radius;
     Color m_color;
     bool m_isFixed;
-
-    // a small epsilon value to account for floating-point imprecision.
-    static constexpr float eps = 0.0001f;
-    static constexpr float dampening = 0.98f;
 };

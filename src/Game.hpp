@@ -15,6 +15,7 @@ public:
     void ShouldProcessInput(bool shouldProcess);
 
 private:
+    static constexpr uint32_t updateSubsteps = 4u;
     const uint32_t m_screenWidth, m_screenHeight;
     bool m_running, m_showFPS, m_processInput;
     VerletEngine m_engine;

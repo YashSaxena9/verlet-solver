@@ -1,15 +1,17 @@
 #include <iostream>
 
 struct GridHasher {
-    size_t cellSize;
+    float cellSize;
 
-    GridHasher(size_t cs) : cellSize(cs) {}
+    GridHasher(float cellSize)
+        : cellSize(cellSize)
+        {}
 
     int64_t Hash(int32_t x, int32_t y) const {
         return ((int64_t)x << 32) | y;
     }
 
     int32_t GridCoord(float value) const {
-        return (int32_t)(value / (float)cellSize);
+        return (int32_t)(value / cellSize);
     }
 };
