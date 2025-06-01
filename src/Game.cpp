@@ -121,14 +121,14 @@ void Game::Update() {
     float stepDt = dt / updateSubsteps;
     bool motionEnabled = FeatureFlags::Instance().IsEnabled(Feature::Motion);
     bool gravityEnabled = motionEnabled && FeatureFlags::Instance().IsEnabled(Feature::Gravity);
+    if (gravityEnabled) {
+        m_engine.ApplyGravity(Constants::GRAVITY);
+    }
+    if (motionEnabled) {
+        m_engine.Update(dt);
+    }
+    m_engine.ApplyConstraints(m_screenWidth, m_screenHeight);
     for (int i = 0; i < updateSubsteps; i++) {
-        if (gravityEnabled) {
-            m_engine.ApplyGravity(Constants::GRAVITY);
-        }
-        if (motionEnabled) {
-            m_engine.Update(stepDt);
-        }
-        m_engine.ApplyConstraints(m_screenWidth, m_screenHeight);
         m_engine.ResolveCollisions();
     }
 }

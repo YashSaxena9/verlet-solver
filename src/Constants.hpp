@@ -10,8 +10,8 @@ namespace Constants {
     constexpr bool SPAWN_ON_CLICK = true;
     constexpr bool SHOW_FPS = true;
     
-    constexpr float SPAWN_PROBABLITY = 0.4f;
-    constexpr int SPAWN_LIMIT = 20000;
+    constexpr float SPAWN_PROBABLITY = 0.6f;
+    constexpr int SPAWN_LIMIT = 40000;
 
     constexpr Vector2 GRAVITY = Vector2 { 0.0f, 9.81f };
     constexpr Vector2 WIND_FORCE = Vector2 { 0.0f, 0.0f };

@@ -159,20 +159,20 @@ void VerletEngine::resolveCollisionsWithSpatialHashing() {
     }
     // resolve collision with multithreading
     m_threadPool.dispatch(possibleCollisionPairs.size(), [&](size_t start, size_t end) {
-        for (size_t i = start; i < end; i++) {
-            auto [aIndex, bIndex] = possibleCollisionPairs[i];
-
-            // Lock in consistent order
-            if (aIndex < bIndex) {
-                std::lock(*m_particleLocks[aIndex], *m_particleLocks[bIndex]);
-                std::lock_guard<std::mutex> lockA(*m_particleLocks[aIndex], std::adopt_lock);
-                std::lock_guard<std::mutex> lockB(*m_particleLocks[bIndex], std::adopt_lock);
+        // iterate either forward or backward in each frame,
+        // iterating only one side piles the particles on that side only
+        // this happens because of float precision
+        float probablity = (double)rand() / RAND_MAX;
+        bool shouldIterateForward = probablity < 0.5;
+        if (shouldIterateForward) {
+            for (size_t i = start; i < end; i++) {
+                auto [aIndex, bIndex] = possibleCollisionPairs[i];
                 resolveParticlePairCollision(aIndex, bIndex);
-            } else {
-                std::lock(*m_particleLocks[bIndex], *m_particleLocks[aIndex]);
-                std::lock_guard<std::mutex> lockA(*m_particleLocks[bIndex], std::adopt_lock);
-                std::lock_guard<std::mutex> lockB(*m_particleLocks[aIndex], std::adopt_lock);
-                resolveParticlePairCollision(bIndex, aIndex);
+            }
+        } else {
+            for (size_t i = end; i > start; i--) {
+                auto [aIndex, bIndex] = possibleCollisionPairs[i - 1];
+                resolveParticlePairCollision(aIndex, bIndex);
             }
         }
     });
@@ -181,12 +181,26 @@ void VerletEngine::resolveCollisionsWithSpatialHashing() {
 void VerletEngine::resolveCollisionsWithNxNComparisons() {
     for (size_t i = 0, end = m_particles.size() - 1; i < end; i += 1) {
         for (size_t j = i + 1; j <= end; j += 1) {
-            resolveParticlePairCollision(i, j);
+            Particle& a = m_particles[i];
+            Particle& b = m_particles[j];
+            if (Particle::CheckCollision(a, b)) {
+                Particle::ResolveCollision(a, b);
+            }
         }
     }
 }
 
 void VerletEngine::resolveParticlePairCollision(size_t idx1, size_t idx2) {
+    if (idx1 > idx2) {
+        // swap to Lock in consistent order
+        idx1 = idx1 ^ idx2;
+        idx2 = idx1 ^ idx2;
+        idx1 = idx1 ^ idx2;
+    }
+
+    std::lock(*m_particleLocks[idx1], *m_particleLocks[idx2]);
+    std::lock_guard<std::mutex> lockA(*m_particleLocks[idx1], std::adopt_lock);
+    std::lock_guard<std::mutex> lockB(*m_particleLocks[idx2], std::adopt_lock);
     Particle& a = m_particles[idx1];
     Particle& b = m_particles[idx2];
     if (Particle::CheckCollision(a, b)) {

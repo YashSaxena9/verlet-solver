@@ -14,7 +14,7 @@ int main(int args, char** argv) {
 
     int32_t width = Constants::SCREEN_WIDTH;
     int32_t height = Constants::SCREEN_HEIGHT;
-    mt::ThreadPool threadPool(10);
+    mt::ThreadPool threadPool(20);
 
     Game game(
         threadPool,
