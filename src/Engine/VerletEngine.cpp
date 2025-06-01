@@ -1,7 +1,13 @@
 #include "VerletEngine.hpp"
 #include <raymath.h>
+#include "VerletEngine.hpp"
 #include "utils/FeatureFlags.hpp"
+#include "utils/ThreadPool.hpp"
 #include "GridHasher.hpp"
+
+VerletEngine::VerletEngine(mt::ThreadPool& threadPool)
+    : m_threadPool(threadPool)
+    {}
 
 void VerletEngine::EnsureCapacity(size_t additionalCount) {
     size_t requiredSize = m_particles.size() + additionalCount;
@@ -24,6 +30,7 @@ void VerletEngine::AddFixedParticle(const Vector2& position, float radius, Color
 
 void VerletEngine::addParticle(const Vector2& position, float radius, Color color, bool isFixed) {
     m_particles.emplace_back(position, radius, color, isFixed);
+    m_particleLocks.emplace_back(std::make_unique<std::mutex>());
     maxParticleRadius = std::max(maxParticleRadius, radius);
 }
 
@@ -32,57 +39,66 @@ size_t VerletEngine::ParticlesCount() const {
 }
 
 void VerletEngine::Update(float dt) {
-    for (auto& particle : m_particles) {
-        particle.Update(dt);
-    }
+    m_threadPool.dispatch(m_particles.size(), [&](size_t start, size_t end) {
+        for (size_t i = start; i < end; i++) {
+            Particle& particle = m_particles[i];
+            particle.Update(dt);
+        }
+    });
 }
 
 void VerletEngine::ApplyGravity(const Vector2& gravity) {
-    for (auto& particle : m_particles) {
-        particle.ApplyForce(gravity);
-    }
+    m_threadPool.dispatch(m_particles.size(), [&](size_t start, size_t end) {
+        for (size_t i = start; i < end; i++) {
+            Particle& particle = m_particles[i];
+            particle.ApplyForce(gravity);
+        }
+    });
 }
 
 void VerletEngine::ApplyConstraints(uint32_t screenWidth, uint32_t screenHeight) {
-    for (auto& particle : m_particles) {
-        Vector2 position = particle.GetPosition();
-        float radius = particle.GetRadius();
-        /// as an optimisation we can use bitwise operators
-        /// but I am lazy, and its will be less readable
-        bool changedX = false, changedY = false;
-        if (position.x - radius < 0) {
-            // Left
-            position.x = radius;
-            changedX = true;
+    m_threadPool.dispatch(m_particles.size(), [&](size_t start, size_t end) {
+        for (size_t i = start; i < end; i++) {
+            Particle& particle = m_particles[i];
+            Vector2 position = particle.GetPosition();
+            float radius = particle.GetRadius();
+            /// as an optimisation we can use bitwise operators
+            /// but I am lazy, and its will be less readable
+            bool changedX = false, changedY = false;
+            if (position.x - radius < 0) {
+                // Left
+                position.x = radius;
+                changedX = true;
+            }
+            if (position.x + radius > screenWidth) {
+                // Right
+                position.x = screenWidth - radius;
+                changedX = true;
+            }
+            if (position.y - radius < 0) {
+                // Top
+                position.y = radius;
+                changedY = true;
+            }
+            if (position.y + radius > screenHeight) {
+                // Bottom
+                position.y = screenHeight - radius;
+                changedY = true;
+            }
+            if (!changedX && !changedY) {
+                continue;
+            }
+            Vector2 velocity = particle.GetVelocity();
+            if (changedX) {
+                velocity.x *= -1 * Particle::dampening;
+            }
+            if (changedY) {
+                velocity.y *= -1 * Particle::dampening;
+            }
+            particle.SetPosition(position);
+            particle.SetVelocity(velocity);
         }
-        if (position.x + radius > screenWidth) {
-            // Right
-            position.x = screenWidth - radius;
-            changedX = true;
-        }
-        if (position.y - radius < 0) {
-            // Top
-            position.y = radius;
-            changedY = true;
-        }
-        if (position.y + radius > screenHeight) {
-            // Bottom
-            position.y = screenHeight - radius;
-            changedY = true;
-        }
-        if (!changedX && !changedY) {
-            continue;
-        }
-        Vector2 velocity = particle.GetVelocity();
-        if (changedX) {
-            velocity.x *= -1 * Particle::dampening;
-        }
-        if (changedY) {
-            velocity.y *= -1 * Particle::dampening;
-        }
-        particle.SetPosition(position);
-        particle.SetVelocity(velocity);
-    }
+    });
 }
 
 void VerletEngine::ResolveCollisions() {
@@ -108,19 +124,19 @@ void VerletEngine::resolveCollisionsWithSpatialHashing() {
         spatialGrid[hashValue].push_back(i);
     }
 
-    // Neighboring offsets
-    const int dx[] = { -1, 0, 1 };
-    const int dy[] = { -1, 0, 1 };
 
     // Check collisions
+    std::vector<std::pair<size_t, size_t>> possibleCollisionPairs;
+    possibleCollisionPairs.reserve(spatialGrid.size() * spatialGrid.size());
+
     for (const auto& cell : spatialGrid) {
         int64_t hash = cell.first;
         const auto& indicesA = cell.second;
         int32_t gx = (int32_t)(hash >> 32);
         int32_t gy = (int32_t)(hash & 0xFFFFFFFF);
 
-        for (int ox : dx) {
-            for (int oy : dy) {
+        for (const int ox : this->DIR_X) {
+            for (const int oy : this->DIR_Y) {
                 int64_t neighborHash = grid.Hash(gx + ox, gy + oy);
                 if (spatialGrid.find(neighborHash) == spatialGrid.end()) {
                     continue;
@@ -134,32 +150,53 @@ void VerletEngine::resolveCollisionsWithSpatialHashing() {
                             // Avoid double or self check
                             continue;
                         }
-                        Particle& a = m_particles[i];
-                        Particle& b = m_particles[j];
-                        if (Particle::CheckCollision(a, b)) {
-                            Particle::ResolveCollision(a, b);
-                        }
+                        possibleCollisionPairs.emplace_back(i, j);
+
                     }
                 }
             }
         }
     }
+    // resolve collision with multithreading
+    m_threadPool.dispatch(possibleCollisionPairs.size(), [&](size_t start, size_t end) {
+        for (size_t i = start; i < end; i++) {
+            auto [aIndex, bIndex] = possibleCollisionPairs[i];
+
+            // Lock in consistent order
+            if (aIndex < bIndex) {
+                std::lock(*m_particleLocks[aIndex], *m_particleLocks[bIndex]);
+                std::lock_guard<std::mutex> lockA(*m_particleLocks[aIndex], std::adopt_lock);
+                std::lock_guard<std::mutex> lockB(*m_particleLocks[bIndex], std::adopt_lock);
+                resolveParticlePairCollision(aIndex, bIndex);
+            } else {
+                std::lock(*m_particleLocks[bIndex], *m_particleLocks[aIndex]);
+                std::lock_guard<std::mutex> lockA(*m_particleLocks[bIndex], std::adopt_lock);
+                std::lock_guard<std::mutex> lockB(*m_particleLocks[aIndex], std::adopt_lock);
+                resolveParticlePairCollision(bIndex, aIndex);
+            }
+        }
+    });
 }
 
 void VerletEngine::resolveCollisionsWithNxNComparisons() {
     for (size_t i = 0, end = m_particles.size() - 1; i < end; i += 1) {
-        Particle& first = m_particles[i];
         for (size_t j = i + 1; j <= end; j += 1) {
-            Particle& second = m_particles[j];
-            if (Particle::CheckCollision(first, second)) {
-                Particle::ResolveCollision(first, second);
-            }
+            resolveParticlePairCollision(i, j);
         }
     }
 }
 
+void VerletEngine::resolveParticlePairCollision(size_t idx1, size_t idx2) {
+    Particle& a = m_particles[idx1];
+    Particle& b = m_particles[idx2];
+    if (Particle::CheckCollision(a, b)) {
+        Particle::ResolveCollision(a, b);
+    }
+}
+
 void VerletEngine::Draw(const Texture2D* particleTexture) const {
+    m_threadPool.wait();
     for (const auto& particle : m_particles) {
-        particle.Draw();
+        particle.Draw(particleTexture);
     }
 }

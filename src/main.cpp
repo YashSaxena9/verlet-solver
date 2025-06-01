@@ -1,19 +1,23 @@
 #include <iostream>
 #include "Game.hpp"
 #include "utils/FeatureFlags.hpp"
+#include "utils/ThreadPool.hpp"
 
 using namespace std;
 
 int main(int args, char** argv) {
     FeatureFlags& flags = FeatureFlags::Instance();
+    flags.Enable(Feature::Motion);
     flags.Enable(Feature::Gravity);
     flags.Enable(Feature::Logging);
     flags.Enable(Feature::SpatialHash);
 
     int32_t width = Constants::SCREEN_WIDTH;
     int32_t height = Constants::SCREEN_HEIGHT;
+    mt::ThreadPool threadPool(10);
 
     Game game(
+        threadPool,
         width,
         height,
         Constants::PREFERRED_FPS

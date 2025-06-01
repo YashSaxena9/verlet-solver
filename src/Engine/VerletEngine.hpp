@@ -2,9 +2,11 @@
 
 #include <vector>
 #include "Particle.hpp"
+#include "utils/ThreadPool.hpp"
 
 class VerletEngine {
 public:
+    VerletEngine(mt::ThreadPool& threadPool);
     void EnsureCapacity(size_t additionalCount);
     void AddParticle(const Vector2& position, float radius, Color color);
     void AddFixedParticle(const Vector2& position, float radius, Color color);
@@ -19,10 +21,17 @@ public:
         return maxParticleRadius;
     }
 private:
+    mt::ThreadPool& m_threadPool;
     float maxParticleRadius = 0;
     std::vector<Particle> m_particles;
+    std::vector<std::unique_ptr<std::mutex>> m_particleLocks;
+
+    // Neighboring offsets for spatial hashing collision resolution
+    const int32_t DIR_X[3] = { -1, 0, 1 };
+    const int32_t DIR_Y[3] = { -1, 0, 1 };
 
     void addParticle(const Vector2& position, float radius, Color color, bool isFixed);
+    void resolveParticlePairCollision(size_t idx1, size_t idx2);
     void resolveCollisionsWithSpatialHashing();
     void resolveCollisionsWithNxNComparisons();
 };

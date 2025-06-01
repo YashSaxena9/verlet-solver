@@ -2,13 +2,15 @@
 #include <random>
 #include "Game.hpp"
 #include "utils/FeatureFlags.hpp"
+#include "utils/ThreadPool.hpp"
 
-Game::Game(uint32_t screenWidth, uint32_t screenHeight, uint32_t frameRate)
-    : m_screenWidth(screenWidth)
+Game::Game(mt::ThreadPool& threadPool, uint32_t screenWidth, uint32_t screenHeight, uint32_t frameRate)
+    : m_threadPool(threadPool)
+    , m_screenWidth(screenWidth)
     , m_screenHeight(screenHeight)
     , m_running(true)
     , m_processInput(true)
-    , m_engine() {
+    , m_engine(threadPool) {
     InitWindow(m_screenWidth, m_screenHeight, "Verlet Game");
     SetTargetFPS(frameRate);
     LoadResources();
@@ -117,12 +119,15 @@ void Game::ProcessInput() {
 void Game::Update() {
     float dt = GetFrameTime();
     float stepDt = dt / updateSubsteps;
-    bool gravityEnabled = FeatureFlags::Instance().IsEnabled(Feature::Gravity);
+    bool motionEnabled = FeatureFlags::Instance().IsEnabled(Feature::Motion);
+    bool gravityEnabled = motionEnabled && FeatureFlags::Instance().IsEnabled(Feature::Gravity);
     for (int i = 0; i < updateSubsteps; i++) {
         if (gravityEnabled) {
             m_engine.ApplyGravity(Constants::GRAVITY);
         }
-        m_engine.Update(stepDt);
+        if (motionEnabled) {
+            m_engine.Update(stepDt);
+        }
         m_engine.ApplyConstraints(m_screenWidth, m_screenHeight);
         m_engine.ResolveCollisions();
     }
