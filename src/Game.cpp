@@ -38,7 +38,7 @@ void Game::SpawnFixedParticles(
     // optional: it prevents frequent resize
     m_engine.EnsureCapacity(positions.size());
     for (const Vector2& position : positions) {
-        m_engine.AddFixedParticle(position, particleRadius, GRAY);
+        m_engine.AddFixedParticle(position, particleRadius);
     }
 }
 
@@ -69,8 +69,7 @@ void Game::SpawnParticles(const float probability, uint32_t limit, float particl
             };
             m_engine.AddParticle(
                 generatedPosition,
-                particleRadius,
-                RED
+                particleRadius
             );
         }
     }
@@ -112,24 +111,27 @@ void Game::ShouldProcessInput(bool shouldProcess) {
 void Game::ProcessInput() {
     if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
         const Vector2& mousePos = GetMousePosition();
-        m_engine.AddParticle(mousePos, Constants::PARTICLE_RADIUS, RED);
+        m_engine.AddParticle(mousePos, Constants::PARTICLE_RADIUS);
     }
 }
 
 void Game::Update() {
     float dt = GetFrameTime();
-    float stepDt = dt / updateSubsteps;
     bool motionEnabled = FeatureFlags::Instance().IsEnabled(Feature::Motion);
     bool gravityEnabled = motionEnabled && FeatureFlags::Instance().IsEnabled(Feature::Gravity);
+    bool fireSimulationEnabled = FeatureFlags::Instance().IsEnabled(Feature::SimulateFire);
+    if (fireSimulationEnabled) {
+        m_engine.UpwardDraftOnHighTemperature(80);
+    }
     if (gravityEnabled) {
         m_engine.ApplyGravity(Constants::GRAVITY);
-    }
-    if (motionEnabled) {
-        m_engine.Update(dt);
     }
     m_engine.ApplyConstraints(m_screenWidth, m_screenHeight);
     for (int i = 0; i < updateSubsteps; i++) {
         m_engine.ResolveCollisions();
+    }
+    if (motionEnabled) {
+        m_engine.Update(dt);
     }
 }
 

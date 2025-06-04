@@ -16,7 +16,7 @@ public:
     void ShouldProcessInput(bool shouldProcess);
 
 private:
-    static constexpr uint32_t updateSubsteps = 4u;
+    static constexpr uint32_t updateSubsteps = 2u;
 
     mt::ThreadPool& m_threadPool;
     const uint32_t m_screenWidth, m_screenHeight;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <raylib.h>
+#include "utils/FireColors.hpp"
 
 class Particle {
 public:
@@ -8,7 +9,7 @@ public:
     static constexpr float eps = 0.0001f;
     static constexpr float dampening = 0.98f;
 
-    Particle(const Vector2& pos, float radius, const Color color = WHITE, bool isFixed = false);
+    Particle(const Vector2& pos, float radius, bool isFixed = false);
     Particle(Particle&& particle) noexcept;
 
     Particle& operator=(Particle&& particle) noexcept;
@@ -47,8 +48,20 @@ public:
         return m_radius;
     }
 
+    inline int32_t GetTemperature() const {
+        return m_temperature;
+    }
+
     inline Color GetColor() const {
-        return m_color;
+        return sim::ColorFromFireTemperature(GetTemperature());
+    }
+
+    inline void IncrementTemperature(int32_t tempInc) {
+        m_temperature += tempInc;
+    }
+
+    inline void DecrementTemperature(int32_t tempInc) {
+        m_temperature += tempInc;
     }
 
     inline bool IsFixed() const {
@@ -70,6 +83,8 @@ private:
     Vector2 m_oldPosition;
     Vector2 m_acceleration;
     float m_radius;
-    Color m_color;
     bool m_isFixed;
+
+    // for fire simulation
+    int32_t m_temperature;
 };

@@ -11,6 +11,7 @@ int main(int args, char** argv) {
     flags.Enable(Feature::Gravity);
     flags.Enable(Feature::Logging);
     flags.Enable(Feature::SpatialHash);
+    // flags.Enable(Feature::SimulateFire);
 
     int32_t width = Constants::SCREEN_WIDTH;
     int32_t height = Constants::SCREEN_HEIGHT;

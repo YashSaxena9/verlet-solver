@@ -1,14 +1,19 @@
 #include <iostream>
 #include "Particle.hpp"
+#include "utils/FeatureFlags.hpp"
 #include <raymath.h>
 
-Particle::Particle(const Vector2& pos, float radius, const Color color, bool isFixed)
+Particle::Particle(const Vector2& pos, float radius, bool isFixed)
     : m_position(pos)
     , m_oldPosition(pos)
     , m_acceleration(Vector2 { 0, 0 })
     , m_radius(radius)
-    , m_color(color)
     , m_isFixed(isFixed)
+    , m_temperature(
+        FeatureFlags::Instance().IsEnabled(Feature::SimulateFire)
+            ? 0
+            : (int)(pos.y / 6)
+    )
     {}
 
 // move constructor for more performance when vector grows
@@ -17,8 +22,8 @@ Particle::Particle(Particle&& particle) noexcept
     , m_oldPosition(particle.m_oldPosition)
     , m_acceleration(particle.m_acceleration)
     , m_radius(particle.m_radius)
-    , m_color(particle.m_color)
     , m_isFixed(particle.m_isFixed)
+    , m_temperature(particle.m_temperature)
     {}
 
 Particle& Particle::operator=(Particle&& particle) noexcept {
@@ -30,8 +35,8 @@ Particle& Particle::operator=(Particle&& particle) noexcept {
     m_oldPosition = particle.m_oldPosition;
     m_acceleration = particle.m_acceleration;
     m_radius = particle.m_radius;
-    m_color = particle.m_color;
     m_isFixed = particle.m_isFixed;
+    m_temperature = particle.m_temperature;
     return *this;
 }
 
@@ -44,6 +49,11 @@ void Particle::Update(float dt) {
     m_position.x += velocity.x + m_acceleration.x * dt * dt;
     m_position.y += velocity.y + m_acceleration.y * dt * dt;
     m_acceleration = Vector2 { 0, 0 }; // reset acceleration
+    if (FeatureFlags::Instance().IsEnabled(Feature::SimulateFire)) {
+        if (GetTemperature() > 0) {
+            DecrementTemperature(1);
+        }
+    }
 }
 
 void Particle::ApplyForce(const Vector2& force) {
@@ -54,6 +64,7 @@ void Particle::ApplyForce(const Vector2& force) {
 }
 
 void Particle::Draw(const Texture2D* particleTexture) const {
+    Color particleColor = GetColor();
     if (particleTexture != nullptr && particleTexture->id > 0) {
         float radius = GetRadius();
         float diameter = radius * 2;
@@ -66,9 +77,9 @@ void Particle::Draw(const Texture2D* particleTexture) const {
             diameter, diameter
         };
         Vector2 origin = Vector2 { radius, radius };
-        DrawTexturePro(*particleTexture, source, dest, origin, 0.0f, m_color);
+        DrawTexturePro(*particleTexture, source, dest, origin, 0.0f, particleColor);
     } else {
-        DrawCircle(m_position.x, m_position.y, m_radius, m_color);
+        DrawCircle(m_position.x, m_position.y, m_radius, particleColor);
     }
 }
 
@@ -95,26 +106,43 @@ void Particle::ResolveCollision(Particle& first, Particle& second) {
 
     float overlap = minPermissibleDistance - distance;
 
-    if (overlap >= Particle::eps) {
-        // normal direction per unit distance
-        Vector2 collisionNormal = Vector2Scale(delta, 1.0f / distance);
-        // position change will be half of the overlap if none is fixed
-        Vector2 positionChange = Vector2Scale(
-            collisionNormal,
-            first.IsFixed() || second.IsFixed() ? overlap : overlap * 0.5f
-        );
+    if (overlap < Particle::eps) {
+        // no overlap or overlap is too small
+        return;
+    }
+    // normal direction per unit distance
+    Vector2 collisionNormal = Vector2Scale(delta, 1.0f / distance);
+    // position change will be half of the overlap if none is fixed
+    Vector2 positionChange = Vector2Scale(
+        collisionNormal,
+        first.IsFixed() || second.IsFixed() ? overlap : overlap * 0.5f
+    );
 
-        // push particles apart
-        // Apply a basic velocity dampening to avoid energy gain
-        if (!first.IsFixed()) {
-            first.m_position = Vector2Subtract(first.GetPosition(), positionChange);
-            Vector2 velocity = first.GetVelocity();
-            first.SetVelocity(Vector2Scale(velocity, Particle::dampening));
-        }
-        if (!second.IsFixed()) {
-            second.m_position = Vector2Add(second.GetPosition(), positionChange);
-            Vector2 velocity = second.GetVelocity();
-            second.SetVelocity(Vector2Scale(velocity, Particle::dampening));
+    // push particles apart
+    // Apply a basic velocity dampening to avoid energy gain
+    if (!first.IsFixed()) {
+        first.m_position = Vector2Subtract(first.GetPosition(), positionChange);
+        Vector2 velocity = first.GetVelocity();
+        first.SetVelocity(Vector2Scale(velocity, Particle::dampening));
+    }
+    if (!second.IsFixed()) {
+        second.m_position = Vector2Add(second.GetPosition(), positionChange);
+        Vector2 velocity = second.GetVelocity();
+        second.SetVelocity(Vector2Scale(velocity, Particle::dampening));
+    }
+    if (FeatureFlags::Instance().IsEnabled(Feature::SimulateFire)) {
+        int32_t firstTemp = first.GetTemperature();
+        int32_t secondTemp = second.GetTemperature();
+        if (firstTemp > secondTemp) {
+            int32_t diffHalf = (firstTemp - secondTemp) / 2;
+            int32_t tempChange = std::min(diffHalf, 1);
+            first.DecrementTemperature(tempChange);
+            second.IncrementTemperature(tempChange);
+        } else if (secondTemp > firstTemp) {
+            int32_t diffHalf = (secondTemp - firstTemp) / 2;
+            int32_t tempChange = std::min(diffHalf, 1);
+            second.DecrementTemperature(tempChange);
+            first.IncrementTemperature(tempChange);
         }
     }
 }

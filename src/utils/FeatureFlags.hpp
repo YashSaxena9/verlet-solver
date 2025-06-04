@@ -6,7 +6,9 @@ enum class Feature : uint32_t {
     Logging      = 1 << 0,
     Motion       = 1 << 1,
     Gravity      = 1 << 2,
-    SpatialHash  = 1 << 3};
+    SpatialHash  = 1 << 3,
+    SimulateFire = 1 << 4
+};
 
 class FeatureFlags {
 public:

@@ -67,10 +67,10 @@ inline void ThreadPool::addTask(std::function<void()> task) {
     m_cv.notify_one();
 }
 
+// single batch dispatch
 // Dispatches work across threads in batches
 template <typename Callback>
 inline void ThreadPool::dispatch(size_t count, Callback callback) {
-    wait();
     const size_t threadCount = m_workers.size();
     const size_t batch = count / threadCount;
     const size_t extra = count % threadCount;
@@ -92,6 +92,35 @@ inline void ThreadPool::dispatch(size_t count, Callback callback) {
 
     wait();
 }
+
+/*
+// multi batch dispatch
+template <typename Callback>
+inline void ThreadPool::dispatch(size_t count, Callback callback) {
+    const size_t threadCount = m_workers.size();
+    const size_t batchCount = threadCount * 2;
+
+    const size_t batchSize = count / batchCount;
+    const size_t extra = count % batchCount;
+
+    size_t start = 0;
+    for (size_t i = 0; i < batchCount; ++i) {
+        size_t end = start + batchSize + (i < extra ? 1 : 0);
+        if (start >= end) {
+            // Avoid empty batches
+            break;
+        }
+
+        addTask([=]() {
+            callback(start, end);
+        });
+
+        start = end;
+    }
+
+    wait();
+}
+*/
 
 // Waits for all tasks to complete
 inline void ThreadPool::wait() {

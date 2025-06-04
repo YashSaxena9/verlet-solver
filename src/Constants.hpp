@@ -16,5 +16,5 @@ namespace Constants {
     constexpr Vector2 GRAVITY = Vector2 { 0.0f, 9.81f };
     constexpr Vector2 WIND_FORCE = Vector2 { 0.0f, 0.0f };
 
-    constexpr int PARTICLE_RADIUS = 1.0;
+    constexpr int PARTICLE_RADIUS = 2.0;
 }

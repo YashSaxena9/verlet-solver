@@ -41,6 +41,17 @@ mkdir -p "$OUT_DIR"
 
 # Compile
 echo "$SRC_FILES"
+echo """
+===== RUNNING =====
+$CXX \
+    $CXXFLAGS \
+    $INCLUDE_FLAGS \
+    $SRC_FILES \
+    $RAYLIB_LIB \
+    $PLATFORM_LIBS \
+    -o "$OUT_BIN"
+====== COMMAND ======
+"""
 $CXX \
     $CXXFLAGS \
     $INCLUDE_FLAGS \
