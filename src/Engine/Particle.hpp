@@ -61,7 +61,7 @@ public:
     }
 
     inline void DecrementTemperature(int32_t tempInc) {
-        m_temperature += tempInc;
+        m_temperature = std::min(m_temperature - tempInc, 0);
     }
 
     inline bool IsFixed() const {

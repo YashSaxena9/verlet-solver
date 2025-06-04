@@ -4,6 +4,7 @@
 #include "utils/FeatureFlags.hpp"
 #include "utils/ThreadPool.hpp"
 #include "GridHasher.hpp"
+#include "Constants.hpp"
 
 VerletEngine::VerletEngine(mt::ThreadPool& threadPool)
     : m_threadPool(threadPool)
@@ -52,7 +53,7 @@ void VerletEngine::UpwardDraftOnHighTemperature(int32_t temp) {
         for (size_t i = start; i < end; i++) {
             Particle& particle = m_particles[i];
             if (particle.GetTemperature() > temp) {
-                particle.ApplyForce(Vector2 { 0.0f, -100.0f });
+                particle.ApplyForce(Vector2 { 0.0f, -350.0f });
             }
         }
     });
@@ -98,7 +99,16 @@ void VerletEngine::ApplyConstraints(uint32_t screenWidth, uint32_t screenHeight)
 
                 if (FeatureFlags::Instance().IsEnabled(Feature::SimulateFire)) {
                     // floor heating
-                    particle.IncrementTemperature(2);
+                    int32_t particleTemp = particle.GetTemperature();
+                    int32_t tempChange = Constants::FLOOR_TEMPERATURE * Constants::FLOOR_HEAT_DIFFUSION_RATE;
+
+                    particle.IncrementTemperature(tempChange);
+                    if (particle.GetTemperature() > Constants::FIRE_THRESHOLD_TEMP) {
+                        // increase velocity upward
+                        particle.SetVelocity(
+                            Vector2Add(particle.GetVelocity(), Vector2 { 0, 0.8 })
+                        );
+                    }
                 }
             }
             if (!changedX && !changedY) {

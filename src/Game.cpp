@@ -121,7 +121,7 @@ void Game::Update() {
     bool gravityEnabled = motionEnabled && FeatureFlags::Instance().IsEnabled(Feature::Gravity);
     bool fireSimulationEnabled = FeatureFlags::Instance().IsEnabled(Feature::SimulateFire);
     if (fireSimulationEnabled) {
-        m_engine.UpwardDraftOnHighTemperature(80);
+        m_engine.UpwardDraftOnHighTemperature(250);
     }
     if (gravityEnabled) {
         m_engine.ApplyGravity(Constants::GRAVITY);

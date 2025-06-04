@@ -1,5 +1,6 @@
 #include <iostream>
 #include "Particle.hpp"
+#include "Constants.hpp"
 #include "utils/FeatureFlags.hpp"
 #include <raymath.h>
 
@@ -50,9 +51,10 @@ void Particle::Update(float dt) {
     m_position.y += velocity.y + m_acceleration.y * dt * dt;
     m_acceleration = Vector2 { 0, 0 }; // reset acceleration
     if (FeatureFlags::Instance().IsEnabled(Feature::SimulateFire)) {
-        if (GetTemperature() > 0) {
-            DecrementTemperature(1);
-        }
+        // if (GetTemperature() > 0) {
+        //     float multiplier = 1.0 - (m_position.y / Constants::SCREEN_HEIGHT);
+            // DecrementTemperature((int32_t)multiplier * 10);
+        // }
     }
 }
 
@@ -135,12 +137,12 @@ void Particle::ResolveCollision(Particle& first, Particle& second) {
         int32_t secondTemp = second.GetTemperature();
         if (firstTemp > secondTemp) {
             int32_t diffHalf = (firstTemp - secondTemp) / 2;
-            int32_t tempChange = std::min(diffHalf, 1);
+            int32_t tempChange = std::max(diffHalf, 0) * Constants::PARTICLE_HEAT_DIFFUSION_RATE;
             first.DecrementTemperature(tempChange);
             second.IncrementTemperature(tempChange);
         } else if (secondTemp > firstTemp) {
             int32_t diffHalf = (secondTemp - firstTemp) / 2;
-            int32_t tempChange = std::min(diffHalf, 1);
+            int32_t tempChange = std::max(diffHalf, 0) * Constants::PARTICLE_HEAT_DIFFUSION_RATE;
             second.DecrementTemperature(tempChange);
             first.IncrementTemperature(tempChange);
         }
