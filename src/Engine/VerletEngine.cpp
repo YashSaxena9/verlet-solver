@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "VerletEngine.hpp"
 #include <raymath.h>
 #include "VerletEngine.hpp"
@@ -40,36 +41,46 @@ size_t VerletEngine::ParticlesCount() const {
 }
 
 void VerletEngine::Update(float dt) {
-    m_threadPool.dispatch(m_particles.size(), [&](size_t start, size_t end) {
+    int32_t start = 0, end = m_particles.size();
+    // m_threadPool.dispatch(m_particles.size(), [&](size_t start, size_t end) {
         for (size_t i = start; i < end; i++) {
             Particle& particle = m_particles[i];
             particle.Update(dt);
         }
-    });
+    // });
 }
 
-void VerletEngine::UpwardDraftOnHighTemperature(int32_t temp) {
-    m_threadPool.dispatch(m_particles.size(), [&](size_t start, size_t end) {
+void VerletEngine::UpwardDraftOnHighTemperature(float temp) {
+    int32_t start = 0, end = m_particles.size();
+    // m_threadPool.dispatch(m_particles.size(), [&](size_t start, size_t end) {
         for (size_t i = start; i < end; i++) {
             Particle& particle = m_particles[i];
             if (particle.GetTemperature() > temp) {
-                particle.ApplyForce(Vector2 { 0.0f, -350.0f });
+                float probability = (double)rand() / RAND_MAX;
+                if (probability > 0.5f) {
+                    // apply upward draft force
+                    // this is a simple simulation of fire upward draft
+                    // it can be improved by using a more complex model
+                    particle.SetVelocity(Vector2 { 0.0f, -Constants::FIRE_UPWARD_DRAFT_FORCE });
+                }
             }
         }
-    });
+    // });
 }
 
 void VerletEngine::ApplyGravity(const Vector2& gravity) {
-    m_threadPool.dispatch(m_particles.size(), [&](size_t start, size_t end) {
+    int32_t start = 0, end = m_particles.size();
+    // m_threadPool.dispatch(m_particles.size(), [&](size_t start, size_t end) {
         for (size_t i = start; i < end; i++) {
             Particle& particle = m_particles[i];
             particle.ApplyForce(gravity);
         }
-    });
+    // });
 }
 
 void VerletEngine::ApplyConstraints(uint32_t screenWidth, uint32_t screenHeight) {
-    m_threadPool.dispatch(m_particles.size(), [&](size_t start, size_t end) {
+    int32_t start = 0, end = m_particles.size();
+    // m_threadPool.dispatch(m_particles.size(), [&](size_t start, size_t end) {
         for (size_t i = start; i < end; i++) {
             Particle& particle = m_particles[i];
             Vector2 position = particle.GetPosition();
@@ -77,38 +88,30 @@ void VerletEngine::ApplyConstraints(uint32_t screenWidth, uint32_t screenHeight)
             /// as an optimisation we can use bitwise operators
             /// but I am lazy, and its will be less readable
             bool changedX = false, changedY = false;
-            if (position.x - radius < 0) {
+            if (position.x - radius <= 0) {
                 // Left
                 position.x = radius;
                 changedX = true;
             }
-            if (position.x + radius > screenWidth) {
+            if (position.x + radius >= screenWidth) {
                 // Right
                 position.x = screenWidth - radius;
                 changedX = true;
             }
-            if (position.y - radius < 0) {
+            if (position.y - radius <= 0) {
                 // Top
                 position.y = radius;
                 changedY = true;
             }
-            if (position.y + radius > screenHeight) {
+            if (position.y + radius >= screenHeight) {
                 // Bottom
                 position.y = screenHeight - radius;
                 changedY = true;
-
                 if (FeatureFlags::Instance().IsEnabled(Feature::SimulateFire)) {
                     // floor heating
-                    int32_t particleTemp = particle.GetTemperature();
-                    int32_t tempChange = Constants::FLOOR_TEMPERATURE * Constants::FLOOR_HEAT_DIFFUSION_RATE;
+                    float tempChange = Constants::MAX_TEMPERATURE * Constants::MAX_FLOOR_HEAT_DIFFUSION_RATE;
 
                     particle.IncrementTemperature(tempChange);
-                    if (particle.GetTemperature() > Constants::FIRE_THRESHOLD_TEMP) {
-                        // increase velocity upward
-                        particle.SetVelocity(
-                            Vector2Add(particle.GetVelocity(), Vector2 { 0, 0.8 })
-                        );
-                    }
                 }
             }
             if (!changedX && !changedY) {
@@ -124,7 +127,7 @@ void VerletEngine::ApplyConstraints(uint32_t screenWidth, uint32_t screenHeight)
             particle.SetPosition(position);
             particle.SetVelocity(velocity);
         }
-    });
+    // });
 }
 
 void VerletEngine::ResolveCollisions() {
@@ -189,7 +192,8 @@ inline void VerletEngine::resolveCollisionsWithSpatialHashing() {
         }
     }
     // resolve collision with multithreading
-    m_threadPool.dispatch(possibleCollisionPairs.size(), [&](size_t start, size_t end) {
+    int32_t start = 0, end = possibleCollisionPairs.size();
+    // m_threadPool.dispatch(possibleCollisionPairs.size(), [&](size_t start, size_t end) {
         // iterate either forward or backward in each frame,
         // iterating only one side piles the particles on that side only
         // this happens because of float precision
@@ -206,7 +210,7 @@ inline void VerletEngine::resolveCollisionsWithSpatialHashing() {
                 resolveParticlePairCollision(aIndex, bIndex);
             }
         }
-    });
+    // });
 }
 
 inline void VerletEngine::resolveCollisionsWithNxNComparisons() {
@@ -239,7 +243,7 @@ void VerletEngine::resolveParticlePairCollision(size_t idx1, size_t idx2) {
 }
 
 void VerletEngine::Draw(const Texture2D* particleTexture) const {
-    m_threadPool.wait();
+    // m_threadPool.wait();
     for (int32_t i = m_particles.size() - 1; i >= 0; i--) {
         const Particle& particle = m_particles[i];
         particle.Draw(particleTexture);

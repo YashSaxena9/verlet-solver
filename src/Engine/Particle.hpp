@@ -1,12 +1,14 @@
 #pragma once
 
+#include <algorithm>
 #include <raylib.h>
 #include "utils/FireColors.hpp"
+#include "Constants.hpp"
 
 class Particle {
 public:
     // a small epsilon value to account for floating-point imprecision.
-    static constexpr float eps = 0.0001f;
+    static constexpr float eps = 0.001f;
     static constexpr float dampening = 0.98f;
 
     Particle(const Vector2& pos, float radius, bool isFixed = false);
@@ -48,20 +50,20 @@ public:
         return m_radius;
     }
 
-    inline int32_t GetTemperature() const {
-        return m_temperature;
-    }
-
     inline Color GetColor() const {
         return sim::ColorFromFireTemperature(GetTemperature());
     }
 
-    inline void IncrementTemperature(int32_t tempInc) {
-        m_temperature += tempInc;
+    inline float GetTemperature() const {
+        return m_temperature;
     }
 
-    inline void DecrementTemperature(int32_t tempInc) {
-        m_temperature = std::min(m_temperature - tempInc, 0);
+    inline void IncrementTemperature(float tempInc) {
+        m_temperature = std::min(m_temperature + tempInc, Constants::MAX_TEMPERATURE);
+    }
+
+    inline void DecrementTemperature(float tempInc) {
+        m_temperature = std::max(m_temperature - tempInc, 0.0f);
     }
 
     inline bool IsFixed() const {
@@ -86,5 +88,5 @@ private:
     bool m_isFixed;
 
     // for fire simulation
-    int32_t m_temperature;
+    float m_temperature;
 };

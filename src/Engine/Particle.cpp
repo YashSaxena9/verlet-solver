@@ -11,9 +11,12 @@ Particle::Particle(const Vector2& pos, float radius, bool isFixed)
     , m_radius(radius)
     , m_isFixed(isFixed)
     , m_temperature(
+        0.0f
+        /*
         FeatureFlags::Instance().IsEnabled(Feature::SimulateFire)
-            ? 0
-            : (int)(pos.y / 6)
+            ? 0.0f
+            : (pos.y / 6)
+        */
     )
     {}
 
@@ -51,10 +54,7 @@ void Particle::Update(float dt) {
     m_position.y += velocity.y + m_acceleration.y * dt * dt;
     m_acceleration = Vector2 { 0, 0 }; // reset acceleration
     if (FeatureFlags::Instance().IsEnabled(Feature::SimulateFire)) {
-        // if (GetTemperature() > 0) {
-        //     float multiplier = 1.0 - (m_position.y / Constants::SCREEN_HEIGHT);
-            // DecrementTemperature((int32_t)multiplier * 10);
-        // }
+        DecrementTemperature(GetTemperature() * Constants::PARTICLE_HEAT_LOSS_RATE);
     }
 }
 
@@ -133,16 +133,16 @@ void Particle::ResolveCollision(Particle& first, Particle& second) {
         second.SetVelocity(Vector2Scale(velocity, Particle::dampening));
     }
     if (FeatureFlags::Instance().IsEnabled(Feature::SimulateFire)) {
-        int32_t firstTemp = first.GetTemperature();
-        int32_t secondTemp = second.GetTemperature();
-        if (firstTemp > secondTemp) {
-            int32_t diffHalf = (firstTemp - secondTemp) / 2;
-            int32_t tempChange = std::max(diffHalf, 0) * Constants::PARTICLE_HEAT_DIFFUSION_RATE;
+        float firstTemp = first.GetTemperature();
+        float secondTemp = second.GetTemperature();
+        if (firstTemp - secondTemp > Particle::eps) {
+            float diffHalf = (firstTemp - secondTemp) / 2;
+            float tempChange = std::max(diffHalf, 0.0f) * Constants::PARTICLE_HEAT_DIFFUSION_RATE;
             first.DecrementTemperature(tempChange);
             second.IncrementTemperature(tempChange);
-        } else if (secondTemp > firstTemp) {
-            int32_t diffHalf = (secondTemp - firstTemp) / 2;
-            int32_t tempChange = std::max(diffHalf, 0) * Constants::PARTICLE_HEAT_DIFFUSION_RATE;
+        } else if (secondTemp - firstTemp > Particle::eps) {
+            float diffHalf = (secondTemp - firstTemp) / 2;
+            float tempChange = std::max(diffHalf, 0.0f) * Constants::PARTICLE_HEAT_DIFFUSION_RATE;
             second.DecrementTemperature(tempChange);
             first.IncrementTemperature(tempChange);
         }

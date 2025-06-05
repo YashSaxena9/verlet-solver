@@ -12,7 +12,7 @@ public:
     void AddFixedParticle(const Vector2& position, float radius);
     size_t ParticlesCount() const;
     void Update(float dt);
-    void UpwardDraftOnHighTemperature(int32_t temp);
+    void UpwardDraftOnHighTemperature(float temp);
     void ApplyConstraints(uint32_t screenWidth, uint32_t screenHeight);
     void ApplyGravity(const Vector2& gravity);
     void Draw(const Texture2D* particleTexture) const;

@@ -113,6 +113,11 @@ void Game::ProcessInput() {
         const Vector2& mousePos = GetMousePosition();
         m_engine.AddParticle(mousePos, Constants::PARTICLE_RADIUS);
     }
+    if (IsKeyDown(KEY_F)) {
+        FeatureFlags::Instance().Enable(Feature::SimulateFire);
+    } else if (IsKeyDown(KEY_D)) {
+        FeatureFlags::Instance().Disable(Feature::SimulateFire);
+    }
 }
 
 void Game::Update() {
@@ -121,7 +126,7 @@ void Game::Update() {
     bool gravityEnabled = motionEnabled && FeatureFlags::Instance().IsEnabled(Feature::Gravity);
     bool fireSimulationEnabled = FeatureFlags::Instance().IsEnabled(Feature::SimulateFire);
     if (fireSimulationEnabled) {
-        m_engine.UpwardDraftOnHighTemperature(250);
+        m_engine.UpwardDraftOnHighTemperature(Constants::FIRE_THRESHOLD_TEMP);
     }
     if (gravityEnabled) {
         m_engine.ApplyGravity(Constants::GRAVITY);

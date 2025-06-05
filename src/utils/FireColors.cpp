@@ -4,7 +4,7 @@
 namespace sim {
 
 Color ColorFromFireTemperature(float normalizedTemp) {
-    float tempC = Clamp(normalizedTemp, 0.0f, 100.0f) * 20.0f; // 0–2000 °C
+    float tempC = Clamp(normalizedTemp, 0.0f, 300.0f) * 6.6667f; // 0–2000 °C
 
     if (tempC < 300) return { 30, 0, 0, 255 }; // dark red
     else if (tempC < 800) {
