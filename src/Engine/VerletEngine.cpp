@@ -41,18 +41,16 @@ size_t VerletEngine::ParticlesCount() const {
 }
 
 void VerletEngine::Update(float dt) {
-    int32_t start = 0, end = m_particles.size();
-    // m_threadPool.dispatch(m_particles.size(), [&](size_t start, size_t end) {
+    m_threadPool.dispatch(m_particles.size(), [&](size_t start, size_t end) {
         for (size_t i = start; i < end; i++) {
             Particle& particle = m_particles[i];
             particle.Update(dt);
         }
-    // });
+    });
 }
 
 void VerletEngine::UpwardDraftOnHighTemperature(float temp) {
-    int32_t start = 0, end = m_particles.size();
-    // m_threadPool.dispatch(m_particles.size(), [&](size_t start, size_t end) {
+    m_threadPool.dispatch(m_particles.size(), [&](size_t start, size_t end) {
         for (size_t i = start; i < end; i++) {
             Particle& particle = m_particles[i];
             if (particle.GetTemperature() > temp) {
@@ -65,22 +63,20 @@ void VerletEngine::UpwardDraftOnHighTemperature(float temp) {
                 }
             }
         }
-    // });
+    });
 }
 
 void VerletEngine::ApplyGravity(const Vector2& gravity) {
-    int32_t start = 0, end = m_particles.size();
-    // m_threadPool.dispatch(m_particles.size(), [&](size_t start, size_t end) {
+    m_threadPool.dispatch(m_particles.size(), [&](size_t start, size_t end) {
         for (size_t i = start; i < end; i++) {
             Particle& particle = m_particles[i];
             particle.ApplyForce(gravity);
         }
-    // });
+    });
 }
 
 void VerletEngine::ApplyConstraints(uint32_t screenWidth, uint32_t screenHeight) {
-    int32_t start = 0, end = m_particles.size();
-    // m_threadPool.dispatch(m_particles.size(), [&](size_t start, size_t end) {
+    m_threadPool.dispatch(m_particles.size(), [&](size_t start, size_t end) {
         for (size_t i = start; i < end; i++) {
             Particle& particle = m_particles[i];
             Vector2 position = particle.GetPosition();
@@ -127,7 +123,7 @@ void VerletEngine::ApplyConstraints(uint32_t screenWidth, uint32_t screenHeight)
             particle.SetPosition(position);
             particle.SetVelocity(velocity);
         }
-    // });
+    });
 }
 
 void VerletEngine::ResolveCollisions() {
@@ -192,8 +188,7 @@ inline void VerletEngine::resolveCollisionsWithSpatialHashing() {
         }
     }
     // resolve collision with multithreading
-    int32_t start = 0, end = possibleCollisionPairs.size();
-    // m_threadPool.dispatch(possibleCollisionPairs.size(), [&](size_t start, size_t end) {
+    m_threadPool.dispatch(possibleCollisionPairs.size(), [&](size_t start, size_t end) {
         // iterate either forward or backward in each frame,
         // iterating only one side piles the particles on that side only
         // this happens because of float precision
@@ -210,7 +205,7 @@ inline void VerletEngine::resolveCollisionsWithSpatialHashing() {
                 resolveParticlePairCollision(aIndex, bIndex);
             }
         }
-    // });
+    });
 }
 
 inline void VerletEngine::resolveCollisionsWithNxNComparisons() {
@@ -243,7 +238,7 @@ void VerletEngine::resolveParticlePairCollision(size_t idx1, size_t idx2) {
 }
 
 void VerletEngine::Draw(const Texture2D* particleTexture) const {
-    // m_threadPool.wait();
+    m_threadPool.wait();
     for (int32_t i = m_particles.size() - 1; i >= 0; i--) {
         const Particle& particle = m_particles[i];
         particle.Draw(particleTexture);
