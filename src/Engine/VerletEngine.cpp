@@ -106,7 +106,6 @@ void VerletEngine::ApplyConstraints(uint32_t screenWidth, uint32_t screenHeight)
                 if (FeatureFlags::Instance().IsEnabled(Feature::SimulateFire)) {
                     // floor heating
                     float tempChange = Constants::MAX_TEMPERATURE * Constants::MAX_FLOOR_HEAT_DIFFUSION_RATE;
-
                     particle.IncrementTemperature(tempChange);
                 }
             }

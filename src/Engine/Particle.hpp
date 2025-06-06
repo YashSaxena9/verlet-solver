@@ -62,8 +62,8 @@ public:
         m_temperature = std::min(m_temperature + tempInc, Constants::MAX_TEMPERATURE);
     }
 
-    inline void DecrementTemperature(float tempInc) {
-        m_temperature = std::max(m_temperature - tempInc, 0.0f);
+    inline void DecrementTemperature(float tempDec) {
+        m_temperature = std::max(m_temperature - tempDec, 0.0f);
     }
 
     inline bool IsFixed() const {
